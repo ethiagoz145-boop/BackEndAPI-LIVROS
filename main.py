@@ -15,11 +15,17 @@
 #====================================================================================================================================================================================================================================================
 
 from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+from typing import Optional
 
 app = FastAPI()
 
 meus_livros = {}
 
+class Livro(BaseModel):
+    nome: str
+    autor: str
+    ano: int
 @app.get("/livros")
 def get_livros():
     if not meus_livros:
@@ -31,24 +37,19 @@ def get_livros():
 #AUTOR
 #ANO 
 @app.post("/adicionar_livro")
-def post_livro(id:int, nome:str, autor:str, ano:int):
-    if id in meus_livros: 
+def post_livro(id: int, livro: Livro):
+    if livro.id in meus_livros:
         raise HTTPException(status_code=400, detail="Livro já existe.")
     else:
-        meus_livros[id] = {"nome": nome, "autor": autor, "ano": ano}
+        meus_livros[livro.id] = livro.dict()
         return {"message": "Livro adicionado com sucesso."}
-@app.put(" ")
-def put_nome(id:int, nome:str, autor:str, ano:int):
+@app.put("/atualizar_livro/{id}")
+def put_nome(livro: Livro, id:int, nome: Optional[str] = None, autor: Optional[str] = None, ano: Optional[int] = None):
     meu_livro = meus_livros.get(id)
     if not meu_livro:
         raise HTTPException(status_code=404, detail="Livro não encontrado.")
     else:
-        if nome:
-            meu_livro["nome"] = nome 
-        if autor:
-            meu_livro["autor"] = autor
-        if ano:
-            meu_livro["ano"] = ano
+        meus_livros[id] = livro.dict()
         return {"message": "Livro atualizado com sucesso."}
 
 @app.delete("/remover_livro/{id}")
