@@ -14,10 +14,12 @@
 #DELETE = Remover um livro = Delete
 #====================================================================================================================================================================================================================================================
 
-from fastapi import FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException
 from pydantic import BaseModel
+from fastapi.security import HTTPBasic, HTTPBasicCredentials
 from typing import Optional
-
+import secrets
+import os
 
 app = FastAPI(
     title="API de Livros",
@@ -28,6 +30,10 @@ app = FastAPI(
         "email": "ethiagoz145@gmail.com"
     }
 )
+meu_usuario = "admin"
+minha_senha = "admin"
+
+security = HTTPBasic()
 
 meus_livros = {}
 
@@ -36,8 +42,13 @@ class Livro(BaseModel):
     autor: str
     ano: int
 
+def autenticar_usuario(credentials: HTTPBasicCredentials = Depends(security)):
+    is_username_correct = secrets.compare_digest(credentials.username, meu_usuario)
+    is_password_correct = secrets.compare_digest(credentials.password, minha_senha)
+    if not (is_password_correct and is_username_correct):
+        raise HTTPException(status_code=401, detail="usuario ou senha incorreto.",headers={"WWW-Authenticate": "Basic"})
 @app.get("/livros")
-def get_livros():
+def get_livros(credentials: HTTPBasicCredentials = Depends(autenticar_usuario)):
     if not meus_livros:
         return {"message": "Nenhum livro encontrado."}
     else:
@@ -49,7 +60,7 @@ def get_livros():
 #ANO
 
 @app.post("/adicionar_livro")
-def post_livro(id: int, livro: Livro):
+def post_livro(id: int, livro: Livro, credentials: HTTPBasicCredentials = Depends(autenticar_usuario)):
     if id in meus_livros:
         raise HTTPException(status_code=400, detail="Livro já existe.")
 
@@ -57,7 +68,7 @@ def post_livro(id: int, livro: Livro):
     return {"message": "Livro adicionado com sucesso."}
 
 @app.put("/atualizar_livro/{id}")
-def put_livro(id: int, livro: Livro):
+def put_livro(id: int, livro: Livro, credentials: HTTPBasicCredentials = Depends(autenticar_usuario)):
     if id not in meus_livros:
         raise HTTPException(status_code=404, detail="Livro não encontrado.")
 
@@ -65,7 +76,7 @@ def put_livro(id: int, livro: Livro):
     return {"message": "Livro atualizado com sucesso."}
 
 @app.delete("/remover_livro/{id}")
-def delete_livro(id:int):
+def delete_livro(id:int, credentials: HTTPBasicCredentials = Depends(autenticar_usuario)):
     if id in meus_livros:
         del meus_livros[id]
         return {"message": "Livro removido com sucesso."}
